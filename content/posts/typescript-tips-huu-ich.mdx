@@ -1,0 +1,171 @@
+---
+title: "10 Docker Best Practices for Production"
+slug: typescript-tips-huu-ich
+description: "Essential Docker best practices for building secure, efficient, and production-ready container images. From multi-stage builds to security scanning."
+date: "2026-02-04"
+tags: ["docker", "devops", "containers"]
+published: true
+---
+
+## Introduction
+
+Docker has become the standard for packaging and deploying applications. Here are 10 best practices I follow for production-grade containers.
+
+## 1. Use Multi-Stage Builds
+
+Keep your final image small by separating build and runtime:
+
+```dockerfile
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+
+# Runtime stage
+FROM node:20-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+USER node
+CMD ["node", "dist/main.js"]
+```
+
+## 2. Pin Your Base Image Versions
+
+Never use `latest` in production:
+
+```dockerfile
+# Bad - unpredictable
+FROM node:latest
+
+# Good - pinned version
+FROM node:20.11-alpine3.19
+```
+
+## 3. Use `.dockerignore`
+
+Exclude unnecessary files to speed up builds and reduce image size:
+
+```
+node_modules
+.git
+.env
+*.md
+docker-compose*.yml
+.github
+coverage
+```
+
+## 4. Run as Non-Root User
+
+Never run containers as root in production:
+
+```dockerfile
+FROM node:20-alpine
+
+RUN addgroup -g 1001 appgroup && \
+    adduser -u 1001 -G appgroup -s /bin/sh -D appuser
+
+WORKDIR /app
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+CMD ["node", "server.js"]
+```
+
+## 5. Use HEALTHCHECK
+
+Let Docker know how to check if your container is healthy:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+```
+
+## 6. Leverage Layer Caching
+
+Order your Dockerfile instructions from least to most frequently changed:
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+
+# These change less often - cached
+COPY package*.json ./
+RUN npm ci --only=production
+
+# This changes more often
+COPY . .
+RUN npm run build
+
+CMD ["node", "dist/main.js"]
+```
+
+## 7. Use Labels for Metadata
+
+Add metadata to your images:
+
+```dockerfile
+LABEL maintainer="phuoc@phuocle.me"
+LABEL org.opencontainers.image.source="https://github.com/phuocle/app"
+LABEL org.opencontainers.image.version="1.2.0"
+LABEL org.opencontainers.image.description="Production API server"
+```
+
+## 8. Scan for Vulnerabilities
+
+Always scan images before deploying:
+
+```bash
+# Using Trivy
+trivy image myapp:latest
+
+# Using Docker Scout
+docker scout cves myapp:latest
+
+# In CI/CD pipeline
+trivy image --exit-code 1 --severity HIGH,CRITICAL myapp:latest
+```
+
+## 9. Set Resource Limits
+
+Prevent runaway containers from consuming all resources:
+
+```yaml
+# docker-compose.yml
+services:
+  api:
+    image: myapp:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+```
+
+## 10. Use Distroless or Minimal Base Images
+
+Reduce attack surface with minimal images:
+
+```dockerfile
+# Option 1: Alpine
+FROM node:20-alpine
+
+# Option 2: Distroless (even smaller, no shell)
+FROM gcr.io/distroless/nodejs20-debian12
+
+# Option 3: Scratch (for compiled binaries)
+FROM scratch
+COPY --from=builder /app/binary /binary
+ENTRYPOINT ["/binary"]
+```
+
+## Wrapping Up
+
+Docker is more than just `docker build` and `docker run`. Following these practices will help you build secure, efficient, and maintainable container images for production. Start applying them today — your future self (and your ops team) will thank you!

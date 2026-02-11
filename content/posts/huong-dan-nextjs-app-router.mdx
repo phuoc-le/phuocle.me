@@ -1,0 +1,150 @@
+---
+title: "Getting Started with Terraform for AWS Infrastructure"
+slug: huong-dan-nextjs-app-router
+description: "A beginner-friendly guide to managing AWS infrastructure with Terraform. Learn the basics of IaC, providers, resources, and state management."
+date: "2026-02-05"
+tags: ["terraform", "aws", "devops"]
+published: true
+---
+
+## What is Terraform?
+
+**Terraform** is an open-source Infrastructure as Code (IaC) tool by HashiCorp. It lets you define cloud resources in declarative configuration files that you can version, reuse, and share.
+
+## Project Structure
+
+A typical Terraform project looks like this:
+
+```
+infra/
+├── main.tf          # Main configuration
+├── variables.tf     # Input variables
+├── outputs.tf       # Output values
+├── providers.tf     # Provider configuration
+├── terraform.tfvars # Variable values
+└── modules/
+    ├── vpc/         # VPC module
+    └── ecs/         # ECS module
+```
+
+## Configuring the AWS Provider
+
+First, set up the AWS provider:
+
+```hcl
+# providers.tf
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket = "my-terraform-state"
+    key    = "prod/terraform.tfstate"
+    region = "ap-southeast-1"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+```
+
+## Creating Resources
+
+Define your infrastructure as code:
+
+```hcl
+# main.tf
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "main-vpc"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "public-subnet-${count.index + 1}"
+  }
+}
+```
+
+## Variables and Outputs
+
+Use variables for reusability:
+
+```hcl
+# variables.tf
+variable "aws_region" {
+  description = "AWS region to deploy to"
+  type        = string
+  default     = "ap-southeast-1"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "production"
+}
+
+# outputs.tf
+output "vpc_id" {
+  description = "The ID of the VPC"
+  value       = aws_vpc.main.id
+}
+```
+
+## Essential Commands
+
+The core Terraform workflow:
+
+```bash
+# Initialize the project
+terraform init
+
+# Preview changes
+terraform plan
+
+# Apply changes
+terraform apply
+
+# Destroy resources (be careful!)
+terraform destroy
+```
+
+## State Management
+
+Terraform state is critical — always use remote state:
+
+```hcl
+# Use S3 + DynamoDB for state locking
+backend "s3" {
+  bucket         = "my-terraform-state"
+  key            = "prod/terraform.tfstate"
+  region         = "ap-southeast-1"
+  dynamodb_table = "terraform-locks"
+  encrypt        = true
+}
+```
+
+## Wrapping Up
+
+Terraform is a powerful tool for managing infrastructure at scale. With declarative configs, remote state, and modular design, it makes infrastructure reproducible and auditable.
+
+In the next post, I'll cover Terraform modules and how to structure larger projects.

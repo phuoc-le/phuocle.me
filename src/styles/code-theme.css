@@ -1,0 +1,64 @@
+/* rehype-pretty-code styling */
+
+figure[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  background-color: var(--card) !important;
+}
+
+figure[data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+
+.dark figure[data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-dark);
+}
+
+/* Highlighted lines */
+figure[data-rehype-pretty-code-figure] .highlighted {
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: calc(1rem - 2px);
+  padding-right: 1rem;
+  border-left: 2px solid var(--color-brand-500);
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+/* Line numbers */
+figure[data-rehype-pretty-code-figure] code[data-line-numbers] {
+  counter-reset: line;
+}
+
+figure[data-rehype-pretty-code-figure] code[data-line-numbers] [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  margin-right: 1rem;
+  display: inline-block;
+  width: 1rem;
+  text-align: right;
+  color: var(--muted-foreground);
+}
+
+/* Code title/filename */
+div[data-rehype-pretty-code-title] {
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  background-color: var(--card);
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+}
+
+div[data-rehype-pretty-code-title] + pre {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
